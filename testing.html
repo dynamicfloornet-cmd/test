@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formulario de Envío a Google Sheets</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
+    input { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
+    button { width: 100%; padding: 10px; background: #4285f4; color: white; border: none; cursor: pointer; }
+    button:hover { background: #3367d6; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #mensaje { margin-top: 10px; padding: 10px; border-radius: 5px; display: none; }
+    .exito { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  </style>
+</head>
+<body>
+  <h2>Envía tus datos a Google Sheets</h2>
+  <form id="miFormulario">
+    <input type="text" name="name" placeholder="Nombre" required><br><br>
+    <input type="number" name="edad" placeholder="Edad" min="0" required><br><br>
+    <button type="submit" id="submitBtn">Enviar</button>
+  </form>
+  <div id="mensaje"></div>
+
+  <script>
+    // Reemplaza con la URL de tu despliegue de Google Apps Script (termina en /exec)
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3zlmyEL2of26YCcVvYSZvWJfme6TMWlzMD6w_86N01hyH5SgycnBJpuvVHwjqARPw/exec';
+
+    const formulario = document.getElementById('miFormulario');
+    const submitBtn = document.getElementById('submitBtn');
+    const mensajeDiv = document.getElementById('mensaje');
+
+    formulario.addEventListener('submit', e => {
+      e.preventDefault(); // Evita recargar la página
+
+      // Obtener y validar datos del formulario
+      const formData = new FormData(formulario);
+      const data = Object.fromEntries(formData.entries());
+
+      if (!data.name || !data.edad) {
+        mostrarMensaje('Por favor, completa todos los campos.', 'error');
+        return;
+      }
+
+      // Deshabilitar botón y mostrar loading
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando...';
+      ocultarMensaje();
+
+      // Enviar datos al backend
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)  // Envía los datos reales del formulario
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(result => {
+        if (result.status === 'ok') {
+          mostrarMensaje(`¡Éxito! Datos guardados: ${data.name}, Edad: ${data.edad}.`, 'exito');
+          formulario.reset();  // Limpia el formulario
+        } else {
+          throw new Error(result.message || 'Error desconocido');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        mostrarMensaje(`Error al enviar: ${error.message}`, 'error');
+      })
+      .finally(() => {
+        // Rehabilitar botón
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar';
+      });
+    });
+
+    // Función auxiliar para mostrar mensajes al usuario
+    function mostrarMensaje(texto, tipo) {
+      mensajeDiv.textContent = texto;
+      mensajeDiv.className = tipo;
+      mensajeDiv.style.display = 'block';
+    }
+
+    function ocultarMensaje() {
+      mensajeDiv.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
